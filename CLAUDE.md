@@ -4,7 +4,24 @@
 
 ## 项目概述
 
-DouyinLiveCapture 是一个基于 .NET 9.0 构建的 WinUI 3 桌面应用程序，用于捕获抖音直播流。项目使用 Windows App SDK，目标平台为 Windows 10 19041 版本及更高版本。
+DouyinLiveCapture 是一个基于 .NET 9.0 构建的 WinUI 3 桌面应用程序，专门用于抖音直播间的自动录制。
+
+### 核心功能
+
+- **🎥 开播自动录制**: 监控指定抖音直播间，开播时自动开始录制
+- **🛑 下播自动停止**: 直播结束时自动停止录制，无需手动干预
+- **📁 自动保存**: 将直播流自动保存到用户指定的目录
+- **🔄 视频转码**: 支持将录制的视频片段转码为通用 MP4 格式
+- **⚙️ 自定义设置**: 支持自定义输出分辨率和码率，满足不同质量需求
+
+### 应用场景
+
+- 内容创作者的直播内容备份
+- 重要直播节目的自动存档
+- 多直播间同时监控和录制
+- 直播内容的二次创作素材收集
+
+项目使用 Windows App SDK，目标平台为 Windows 10 19041 版本及更高版本。
 
 ## 解决方案结构
 
@@ -116,18 +133,45 @@ using CommunityToolkit.Mvvm.Input;
 public partial class MainViewModel : ObservableObject
 {
     [ObservableProperty]
-    public partial string Title { get; set; } = "抖音直播捕获器";
+    public partial string Title { get; set; } = "应用程序标题";
 
     [ObservableProperty]
     public partial bool IsLoading { get; set; }
 
     [ObservableProperty]
+    public partial bool IsProcessing { get; set; }
+
+    [ObservableProperty]
     public partial string StatusMessage { get; set; } = "就绪";
 
+    [ObservableProperty]
+    public partial string UserName { get; set; } = "";
+
+    [ObservableProperty]
+    public partial int Count { get; set; }
+
+    [ObservableProperty]
+    public partial string SelectedOption { get; set; } = "选项1";
+
     [RelayCommand]
-    private void StartCapture()
+    private void StartProcess()
     {
-        StatusMessage = "正在捕获...";
+        IsProcessing = true;
+        StatusMessage = "正在处理...";
+    }
+
+    [RelayCommand]
+    private void StopProcess()
+    {
+        IsProcessing = false;
+        StatusMessage = "处理已停止";
+    }
+
+    [RelayCommand]
+    private void SelectOption(string option)
+    {
+        SelectedOption = option;
+        StatusMessage = $"已选择: {option}";
     }
 
     [RelayCommand]
@@ -136,7 +180,12 @@ public partial class MainViewModel : ObservableObject
         try
         {
             IsLoading = true;
+            StatusMessage = "加载中...";
+
+            // 模拟异步操作
             await Task.Delay(1000);
+
+            Count = 42;
             StatusMessage = "加载完成";
         }
         finally
@@ -177,21 +226,22 @@ public partial class AdvancedViewModel : ObservableObject
 {
     // 依赖属性通知
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FullInfo))]
-    public partial string Name { get; set; } = "";
+    [NotifyPropertyChangedFor(nameof(DisplayText))]
+    public partial string InputText { get; set; } = "";
 
     // 命令状态通知
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
-    public partial bool CanSave { get; set; }
+    [NotifyCanExecuteChangedFor(nameof(SubmitCommand))]
+    public partial bool IsValidInput { get; set; }
 
     // 计算属性
-    public string FullInfo => $"名称: {Name}, 可保存: {CanSave}";
+    public string DisplayText => $"输入: {InputText}, 有效: {IsValidInput}";
 
     // 属性变更回调
-    partial void OnNameChanged(string? value)
+    partial void OnInputTextChanged(string? value)
     {
-        Console.WriteLine($"名称已变更为: {value}");
+        Console.WriteLine($"输入已变更为: {value}");
+        IsValidInput = !string.IsNullOrEmpty(value);
     }
 }
 ```
@@ -203,26 +253,6 @@ public partial class AdvancedViewModel : ObservableObject
 3. **合理使用异步**: 对于长时间操作使用 `IAsyncRelayCommand`
 4. **属性验证**: 使用 `[NotifyDataErrorInfo]` 进行数据验证
 5. **内存管理**: 对于大型集合使用 `ObservableCollection<T>` 并适当实现分页
-
-### 项目结构建议
-
-```
-src/DouyinLiveCapture/
-├── Models/                 # 数据模型
-│   ├── StreamInfo.cs
-│   └── CaptureSettings.cs
-├── ViewModels/             # 视图模型
-│   ├── MainViewModel.cs
-│   └── SettingsViewModel.cs
-├── Views/                  # 视图
-│   ├── MainWindow.xaml
-│   └── SettingsPage.xaml
-├── Services/               # 业务服务
-│   ├── ICaptureService.cs
-│   └── CaptureService.cs
-└── Converters/             # 值转换器
-    └── BoolToVisibilityConverter.cs
-```
 
 ### 常见陷阱
 
