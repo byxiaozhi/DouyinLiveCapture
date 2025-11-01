@@ -56,12 +56,176 @@ dotnet build DouyinLiveCapture.slnx -c Release -r win-arm64
 dotnet test --project src/DouyinLiveCapture.Tests/
 ```
 
+### 运行特定测试类
+```bash
+dotnet test --project src/DouyinLiveCapture.Tests/ --filter "ClassName~ErrorHandlingServiceTests"
+```
+
+### 运行特定测试方法
+```bash
+dotnet test --project src/DouyinLiveCapture.Tests/ --filter "TestMethodName~RetryMechanism_SuccessAfterRetries"
+```
+
 ### 运行测试并显示详细输出
 ```bash
 dotnet test --project src/DouyinLiveCapture.Tests/ --verbosity normal
 ```
 
 **注意**: 由于项目配置了多个平台架构，必须使用 `--project` 参数指定测试项目。这是运行测试的最简单方式。
+
+## MSTest 单元测试最佳实践
+
+### 核心原则
+- **AAA模式**: Arrange（准备）-> Act（执行）-> Assert（断言）
+- **单一职责**: 每个测试只验证一个行为
+- **可读性优先**: 测试代码应该清晰易懂
+- **避免魔法数字**: 使用常量或描述性变量
+
+### 测试文件结构
+```csharp
+[TestClass]
+public class ServiceTests
+{
+    private Mock<ILogger<Service>> _loggerMock = null!;
+    private Service _service = null!;
+
+    [TestInitialize]
+    public void TestInitialize()
+    {
+        _loggerMock = new Mock<ILogger<Service>>();
+        _service = new Service(_loggerMock.Object);
+    }
+
+    [TestMethod]
+    public async Task Method_ValidInput_ReturnsExpectedResult()
+    {
+        // Arrange
+        const string input = "test";
+
+        // Act
+        var result = await _service.MethodAsync(input);
+
+        // Assert
+        Assert.AreEqual("expected", result);
+    }
+}
+```
+
+### 异步测试
+```csharp
+[TestMethod]
+public async Task AsyncMethod_ThrowsException_HandlesCorrectly()
+{
+    // Arrange
+    var operation = new Func<Task>(() => throw new InvalidOperationException("test"));
+
+    // Act & Assert
+    var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RetryAsync(operation));
+    Assert.AreEqual("test", exception.Message);
+}
+```
+
+### 异常测试
+```csharp
+[TestMethod]
+public void Constructor_InvalidParameter_ThrowsArgumentNullException()
+{
+    // Act & Assert
+    Assert.Throws<ArgumentNullException>(() => new Service(null!));
+}
+```
+
+### 模拟对象 (Moq)
+```csharp
+[TestMethod]
+public void Method_WithError_LogsException()
+{
+    // Arrange
+    var exception = new InvalidOperationException("test");
+
+    // Act
+    _service.HandleError(exception);
+
+    // Assert
+    _loggerMock.Verify(
+        x => x.Log(
+            LogLevel.Error,
+            It.IsAny<EventId>(),
+            It.IsAny<It.IsAnyType>(),
+            exception,
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+        Times.Once);
+}
+```
+
+### 数值比较
+```csharp
+[TestMethod]
+public void Calculation_WithTolerance_WithinRange()
+{
+    // Arrange
+    const double tolerance = 0.1;
+
+    // Act
+    var result = _service.Calculate();
+
+    // Assert
+    Assert.IsLessThan(Math.Abs(result - ExpectedValue), tolerance);
+}
+```
+
+### 集合测试
+```csharp
+[TestMethod]
+public void Collection_ContainsExpectedElements()
+{
+    // Arrange
+    var list = new List<string> { "item1", "item2", "item3" };
+
+    // Act & Assert
+    Assert.HasCount(list, 3);
+    Assert.Contains(list, "item1");
+    Assert.DoesNotContain(list, "item4");
+}
+```
+
+### 文件系统测试
+```csharp
+[TestMethod]
+public async Task FileOperation_CreatesFile_FileExists()
+{
+    // Arrange
+    var filePath = Path.Combine(_tempDirectory, "test.txt");
+
+    // Act
+    await File.WriteAllTextAsync(filePath, "content");
+
+    // Assert
+    Assert.IsTrue(File.Exists(filePath));
+    Assert.EndsWith(filePath, "test.txt");
+}
+```
+
+### 并发测试
+```csharp
+[TestMethod]
+public async Task ConcurrentAccess_MultipleOperations_HandlesCorrectly()
+{
+    // Arrange
+    var tasks = new List<Task>();
+    const int taskCount = 10;
+
+    // Act
+    for (int i = 0; i < taskCount; i++)
+    {
+        tasks.Add(_service.ProcessAsync(i));
+    }
+    await Task.WhenAll(tasks);
+
+    // Assert
+    Assert.AreEqual(taskCount, await _service.GetProcessedCountAsync());
+}
+```
 
 ## 项目配置
 
