@@ -4,6 +4,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="src/DouyinLiveCapture.Tests/DouyinLiveCapture.Tests.csproj" Id="9822aad6-e696-4069-8a9b-c3020f2d483c" />
   <Project Path="src/DouyinLiveCapture/DouyinLiveCapture.csproj">
     <Platform Solution="*|ARM64" Project="ARM64" />
     <Platform Solution="*|x64" Project="x64" />
