@@ -77,6 +77,162 @@ dotnet test --project src/DouyinLiveCapture.Tests/ --verbosity normal
 
 项目使用 MSTest 进行单元测试，采用 MSTest.Sdk 进行现代化测试项目配置。
 
+## MVVM 框架
+
+此项目使用 **CommunityToolkit.Mvvm** 作为 MVVM 框架（版本 8.4.0），这是 Microsoft 官方推荐的现代 MVVM 库。
+
+### 核心 Features
+
+- **Source Generators**: 使用 C# 源生成器在编译时生成代码，零运行时开销
+- **ObservableProperty**: 自动生成可观察属性，无需手动实现 INotifyPropertyChanged
+- **RelayCommand**: 自动生成命令，支持同步和异步操作
+- **ObservableObject**: 提供可观察对象基类
+
+### 设计原则
+
+**遵循标准 C# MVVM 设计范式：**
+
+- **Model (模型)**: 业务逻辑和数据实体，不包含任何 UI 相关代码
+- **View (视图)**: 纯 UI 层，XAML 文件和对应的代码隐藏文件，只处理 UI 交互和视觉呈现
+- **ViewModel (视图模型)**: 连接 Model 和 View 的桥梁，处理 UI 逻辑、状态管理和数据转换
+
+**关键设计要点：**
+
+1. **View 和 ViewModel 分离**: View 只负责展示，ViewModel 只负责逻辑
+2. **数据流向**: View → ViewModel → Model，单向数据流
+3. **命令驱动**: 用户操作通过 Command 触发，避免事件处理
+4. **可观察性**: 使用 `ObservableProperty` 实现属性变更通知
+5. **无直接引用**: View 不直接引用 Model，通过 ViewModel 间接访问
+6. **可测试性**: ViewModel 不依赖 UI 框架，便于单元测试
+
+### 快速开始
+
+#### ViewModel 示例
+
+```csharp
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+public partial class MainViewModel : ObservableObject
+{
+    [ObservableProperty]
+    public partial string Title { get; set; } = "抖音直播捕获器";
+
+    [ObservableProperty]
+    public partial bool IsLoading { get; set; }
+
+    [ObservableProperty]
+    public partial string StatusMessage { get; set; } = "就绪";
+
+    [RelayCommand]
+    private void StartCapture()
+    {
+        StatusMessage = "正在捕获...";
+    }
+
+    [RelayCommand]
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            await Task.Delay(1000);
+            StatusMessage = "加载完成";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}
+```
+
+#### XAML 绑定
+
+```xml
+<Page xmlns:viewModels="using:DouyinLiveCapture.ViewModels">
+    <Page.DataContext>
+        <viewModels:MainViewModel x:Name="ViewModel"/>
+    </Page.DataContext>
+
+    <StackPanel Spacing="12" Padding="20">
+        <TextBlock Text="{x:Bind ViewModel.Title}"/>
+        <TextBlock Text="{x:Bind ViewModel.StatusMessage}"/>
+        <ProgressRing IsActive="{x:Bind ViewModel.IsLoading}"/>
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="开始捕获"
+                    Command="{x:Bind ViewModel.StartCaptureCommand}"/>
+            <Button Content="加载数据"
+                    Command="{x:Bind ViewModel.LoadDataCommand}"/>
+        </StackPanel>
+    </StackPanel>
+</Page>
+```
+
+#### 高级特性
+
+```csharp
+public partial class AdvancedViewModel : ObservableObject
+{
+    // 依赖属性通知
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FullInfo))]
+    public partial string Name { get; set; } = "";
+
+    // 命令状态通知
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    public partial bool CanSave { get; set; }
+
+    // 计算属性
+    public string FullInfo => $"名称: {Name}, 可保存: {CanSave}";
+
+    // 属性变更回调
+    partial void OnNameChanged(string? value)
+    {
+        Console.WriteLine($"名称已变更为: {value}");
+    }
+}
+```
+
+### 性能优化建议
+
+1. **使用 Source Generators**: 编译时生成代码，零运行时开销
+2. **避免过度通知**: 只在必要时使用 `[NotifyPropertyChangedFor]`
+3. **合理使用异步**: 对于长时间操作使用 `IAsyncRelayCommand`
+4. **属性验证**: 使用 `[NotifyDataErrorInfo]` 进行数据验证
+5. **内存管理**: 对于大型集合使用 `ObservableCollection<T>` 并适当实现分页
+
+### 项目结构建议
+
+```
+src/DouyinLiveCapture/
+├── Models/                 # 数据模型
+│   ├── StreamInfo.cs
+│   └── CaptureSettings.cs
+├── ViewModels/             # 视图模型
+│   ├── MainViewModel.cs
+│   └── SettingsViewModel.cs
+├── Views/                  # 视图
+│   ├── MainWindow.xaml
+│   └── SettingsPage.xaml
+├── Services/               # 业务服务
+│   ├── ICaptureService.cs
+│   └── CaptureService.cs
+└── Converters/             # 值转换器
+    └── BoolToVisibilityConverter.cs
+```
+
+### 常见陷阱
+
+1. **忘记 partial 类**: 使用 Source Generators 时必须将 ViewModel 声明为 `partial`
+2. **命名约定**: 属性使用 PascalCase，源生成器会自动处理字段转换
+3. **命令命名**: `[RelayCommand]` 会自动生成以 "Command" 结尾的属性
+4. **MVVM 违反**: 避免在 ViewModel 中直接操作 UI 控件或引用 View
+5. **业务逻辑混用**: Model 层不应包含 UI 相关逻辑，ViewModel 层不应包含持久化逻辑
+6. **生命周期管理**: 正确实现异步操作的取消和异常处理
+
 ## 开发说明
 
 - 这是一个仅限 Windows 的应用程序，需要 Windows 10 19041+
