@@ -429,3 +429,6 @@ FodyWeavers.xsd
 
 # Claude AI files
 .claude
+
+# Temp directory
+temp/
