@@ -19,6 +19,7 @@
 		<PublishSingleFile>true</PublishSingleFile>
 		<PublishTrimmed>True</PublishTrimmed>
 		<PublishAot>True</PublishAot>
+		<JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -27,6 +28,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
 		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.6901" />
 		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.251003001" />
 	</ItemGroup>
